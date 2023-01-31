@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NextMindBE.Data;
 
@@ -10,9 +11,11 @@ using NextMindBE.Data;
 namespace NextMindBE.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class NextMindContextModelSnapshot : ModelSnapshot
+    [Migration("20230130183045_DbUpdate")]
+    partial class DbUpdate
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -79,9 +82,6 @@ namespace NextMindBE.Migrations
                     b.Property<string>("SessionId")
                         .IsRequired()
                         .HasColumnType("longtext");
-
-                    b.Property<double>("UpdateInterval")
-                        .HasColumnType("double");
 
                     b.Property<int>("UserId")
                         .HasColumnType("int");

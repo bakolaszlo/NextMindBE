@@ -5,6 +5,7 @@ using Newtonsoft.Json;
 using NextMindBE.Data;
 using NextMindBE.DTOs;
 using NextMindBE.Model;
+using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -48,7 +49,7 @@ namespace NextMindBE.Controllers
         }
 
         [HttpPost("login")]
-        public async Task<ActionResult<string>> Login(UserDto request)
+        public async Task<ActionResult<string>> Login(LoginDto request)
         {
             var user = _context.User.SingleOrDefault(o => o.Username == request.Username);
             if(user == null)
@@ -60,28 +61,42 @@ namespace NextMindBE.Controllers
             {
                 return BadRequest("Something went wrong.");
             }
-            var guid = Guid.NewGuid().ToString();
-            user.LastActive = DateTime.UtcNow.AddSeconds(20);
-            user.SessionId = guid;
-            PingTimerManager._authenticatedUsers.Add(guid, user);
+
+            double updateInterval = Random.Shared.NextDouble() * 3;
             var val = new Dictionary<string, string>()
             {
-                { "token", CreateToken(user) },
-                { "sessionId" , guid },
+                { "token", CreateToken(user, out var guid) },
+                { "UpdateInterval", updateInterval.ToString() }
             };
 
+            user.LastActive = DateTime.UtcNow.AddSeconds(20);
+            PingTimerManager._authenticatedUsers.Add(guid.ToString(), user);
+            user.SessionId = guid.ToString();
             _context.User.Update(user);
-
+            _context.SensorOnCalibrationEnd.Add(new SensorOnCalibrationEnd()
+            {
+                Guid = guid.ToString(),
+                SensorData = request.SensorData,
+            });
+            _context.SessionHistory.Add(new SessionHistory()
+            {
+                Created = DateTime.Now,
+                SessionId = guid.ToString(),
+                UserId = user.Id,
+                UpdateInterval = updateInterval,
+            });
             _context.SaveChangesAsync();
             return Ok(JsonConvert.SerializeObject(val));
         }
 
 
-        private string CreateToken(User user)
+        private string CreateToken(User user, out Guid guid)
         {
+            guid = Guid.NewGuid();
             List<Claim> claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new Claim("SessionId", guid.ToString())
             };
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration.GetSection("AppSettings:Token").Value));
