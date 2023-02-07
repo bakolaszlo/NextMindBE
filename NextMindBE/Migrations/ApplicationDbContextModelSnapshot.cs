@@ -2,7 +2,6 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NextMindBE.Data;
 
@@ -11,44 +10,31 @@ using NextMindBE.Data;
 namespace NextMindBE.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20230131172509_UpdateSessionHistory")]
-    partial class UpdateSessionHistory
+    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
     {
-        /// <inheritdoc />
-        protected override void BuildTargetModel(ModelBuilder modelBuilder)
+        protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
                 .HasAnnotation("ProductVersion", "7.0.2")
                 .HasAnnotation("Relational:MaxIdentifierLength", 64);
 
-            modelBuilder.Entity("NextMindBE.Model.Ping", b =>
+            modelBuilder.Entity("NextMindBE.Model.SensorData", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<byte[]>("Position")
-                        .IsRequired()
-                        .HasColumnType("longblob");
-
-                    b.Property<string>("SessionId")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("Timestamp")
+                    b.Property<DateTime>("RecordedTime")
                         .HasColumnType("datetime(6)");
+
+                    b.Property<string>("SensorValues")
+                        .IsRequired()
+                        .HasColumnType("longtext");
 
                     b.HasKey("Id");
 
-                    b.ToTable("Ping");
+                    b.ToTable("SensorData");
                 });
 
             modelBuilder.Entity("NextMindBE.Model.SensorOnCalibrationEnd", b =>
@@ -57,11 +43,11 @@ namespace NextMindBE.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    b.Property<string>("Guid")
+                    b.Property<string>("SensorValues")
                         .IsRequired()
                         .HasColumnType("longtext");
 
-                    b.Property<string>("SensorData")
+                    b.Property<string>("SessionId")
                         .IsRequired()
                         .HasColumnType("longtext");
 

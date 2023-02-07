@@ -7,7 +7,7 @@ namespace NextMindBE.Data
 {
     public class ApplicationDbContext : DbContext
     {
-        public DbSet<Ping> Ping { get; set; }
+        public DbSet<SensorData> SensorData { get; set; }
         public DbSet<User> User { get; set; }
 
         public DbSet<SensorOnCalibrationEnd> SensorOnCalibrationEnd { get; set; }
@@ -23,7 +23,13 @@ namespace NextMindBE.Data
         {
             // Configure the value converter for the Animal
             modelBuilder.Entity<SensorOnCalibrationEnd>()
-            .Property(x => x.SensorData)
+            .Property(x => x.SensorValues)
+            .HasConversion(new ValueConverter<float[], string>(
+                v => JsonConvert.SerializeObject(v), // Convert to string for persistence
+                v => JsonConvert.DeserializeObject<float[]>(v))); // Convert to List<String> for use
+
+            modelBuilder.Entity<SensorData>()
+            .Property(x => x.SensorValues)
             .HasConversion(new ValueConverter<float[], string>(
                 v => JsonConvert.SerializeObject(v), // Convert to string for persistence
                 v => JsonConvert.DeserializeObject<float[]>(v))); // Convert to List<String> for use

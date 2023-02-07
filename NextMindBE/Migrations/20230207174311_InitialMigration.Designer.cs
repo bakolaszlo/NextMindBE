@@ -11,7 +11,7 @@ using NextMindBE.Data;
 namespace NextMindBE.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20230124124344_InitialMigration")]
+    [Migration("20230207174311_InitialMigration")]
     partial class InitialMigration
     {
         /// <inheritdoc />
@@ -22,29 +22,65 @@ namespace NextMindBE.Migrations
                 .HasAnnotation("ProductVersion", "7.0.2")
                 .HasAnnotation("Relational:MaxIdentifierLength", 64);
 
-            modelBuilder.Entity("NextMindBE.Model.Ping", b =>
+            modelBuilder.Entity("NextMindBE.Model.SensorData", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    b.Property<string>("Name")
+                    b.Property<DateTime>("RecordedTime")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("SensorValues")
                         .IsRequired()
                         .HasColumnType("longtext");
 
-                    b.Property<byte[]>("Position")
-                        .IsRequired()
-                        .HasColumnType("longblob");
+                    b.HasKey("Id");
 
-                    b.Property<int>("Status")
+                    b.ToTable("SensorData");
+                });
+
+            modelBuilder.Entity("NextMindBE.Model.SensorOnCalibrationEnd", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    b.Property<DateTime>("Timestamp")
-                        .HasColumnType("datetime(6)");
+                    b.Property<string>("SensorValues")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("SessionId")
+                        .IsRequired()
+                        .HasColumnType("longtext");
 
                     b.HasKey("Id");
 
-                    b.ToTable("Ping");
+                    b.ToTable("SensorOnCalibrationEnd");
+                });
+
+            modelBuilder.Entity("NextMindBE.Model.SessionHistory", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("SessionId")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<double>("UpdateInterval")
+                        .HasColumnType("double");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SessionHistory");
                 });
 
             modelBuilder.Entity("NextMindBE.Model.User", b =>
@@ -53,6 +89,9 @@ namespace NextMindBE.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
+                    b.Property<DateTime>("LastActive")
+                        .HasColumnType("datetime(6)");
+
                     b.Property<byte[]>("PasswordHash")
                         .IsRequired()
                         .HasColumnType("longblob");
@@ -60,6 +99,10 @@ namespace NextMindBE.Migrations
                     b.Property<byte[]>("PasswordSalt")
                         .IsRequired()
                         .HasColumnType("longblob");
+
+                    b.Property<string>("SessionId")
+                        .IsRequired()
+                        .HasColumnType("longtext");
 
                     b.Property<string>("Username")
                         .IsRequired()

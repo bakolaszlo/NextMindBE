@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json.Linq;
 using NextMindBE.Data;
 using NextMindBE.DTOs;
 using NextMindBE.Model;
@@ -18,47 +20,91 @@ namespace NextMindBE.Controllers
     public class PingsController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
-
+        private const float LOCKOUT_TRESHOLD = 20f;
         public PingsController(ApplicationDbContext context)
         {
             _context = context;
         }
 
-        // POST: api/Pings
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
-        public async Task<ActionResult<Ping>> PostPing(PingDto ping)
+        public async Task<ActionResult<bool>> PostPing(List<SensorData> payload)
         {
-            var user = _context.User.FirstOrDefault(o => o.SessionId == ping.SessionId);
-            if(user == null)
+            var handler = new JwtSecurityTokenHandler();
+            var token = handler.ReadToken(Request.Headers["Authorization"].ToString().Remove(0, 7)) as JwtSecurityToken;
+            var claims = token?.Claims;
+
+            var sessionId = claims.FirstOrDefault(c => c.Type == "SessionId").Value;
+
+            var sessionHistory = _context.SessionHistory.FirstOrDefault(o => o.SessionId == sessionId);
+            if(sessionHistory == null)
             {
-                return BadRequest(); // TODO: Remove from the list, and lock out the app.
+                Console.WriteLine($"No session Id found. Expected: {sessionId}");
+                return BadRequest(); 
+                // TODO: Remove from the list, and lock out the app.
             }
 
-            if (!PingTimerManager._authenticatedUsers.ContainsKey(user.SessionId))
+            if(payload.Count == 0)
+            {
+                return Ok();
+            }
+
+            var time1 = payload[0].RecordedTime;
+            if(!IsSensorDataStillValid(payload[0].SensorValues, sessionId))
+            {
+                return BadRequest();
+            }
+
+            for (int i = 1; i < payload.Count; i++)
+            {
+                var deltaTime = time1 - payload[i].RecordedTime;
+                if(Math.Abs(deltaTime.TotalSeconds) - sessionHistory.UpdateInterval > 0.09)
+                {
+                    Console.WriteLine("Received a delayed timestamp.");
+                    return BadRequest();
+                }
+
+                if (!IsSensorDataStillValid(payload[i].SensorValues, sessionId))
+                {
+                    return BadRequest();
+                }
+
+                time1 = payload[i].RecordedTime;
+            }
+
+            if (!PingTimerManager._authenticatedUsers.ContainsKey(sessionId))
             {
                 // TODO: Notify lockout server to lock out the app.
                 Console.WriteLine("Recived an inactive ping. Alarm ON!");
                 return BadRequest();
             }
 
-            var newPing = new Ping()
-            {
-                Name = user.Username,
-                Position = ping.Position,
-                Status = ping.Status,
-                SessionId = user.SessionId,
-                Timestamp = DateTime.UtcNow,
-            };
 
-            user.LastActive = DateTime.UtcNow;
-            PingTimerManager._authenticatedUsers[user.SessionId] = user;
-            _context.Ping.Add(newPing);
-            _context.User.Update(user);
+            PingTimerManager._authenticatedUsers[sessionHistory.SessionId].LastActive = DateTime.UtcNow;
+
+            _context.SensorData.AddRange(payload);
             await _context.SaveChangesAsync();
 
             return Ok();
         }
 
+        private bool IsSensorDataStillValid(float[] sensorValues, string sessionId)
+        {
+            var calibrationValues = _context.SensorOnCalibrationEnd.FirstOrDefault(o => o.SessionId == sessionId);
+            if (calibrationValues == null)
+            {
+                Console.WriteLine($"Could not find calibration values for session id: {sessionId}");
+                return false;
+            }
+
+            for(int i = 0; i < sensorValues.Length; i++)
+            {
+                if (Math.Abs(sensorValues[i] - calibrationValues.SensorValues[i]) > LOCKOUT_TRESHOLD)
+                {
+                    Console.WriteLine($"Sensor data is invalid at pos:{i}. Got: {sensorValues[i]} Calibration Value: {calibrationValues.SensorValues[i]} Threshold: {LOCKOUT_TRESHOLD}");
+                    return false;
+                }
+            }
+            return true;
+        }
     }
 }

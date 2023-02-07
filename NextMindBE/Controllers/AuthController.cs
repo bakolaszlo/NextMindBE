@@ -75,8 +75,8 @@ namespace NextMindBE.Controllers
             _context.User.Update(user);
             _context.SensorOnCalibrationEnd.Add(new SensorOnCalibrationEnd()
             {
-                Guid = guid.ToString(),
-                SensorData = request.SensorData,
+                SessionId = guid.ToString(),
+                SensorValues = request.SensorData,
             });
             _context.SessionHistory.Add(new SessionHistory()
             {
