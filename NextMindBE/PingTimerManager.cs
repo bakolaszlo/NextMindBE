@@ -10,7 +10,7 @@ namespace NextMindBE
         private static System.Timers.Timer aTimer;
         private static void SetTimer()
         {
-            aTimer = new System.Timers.Timer(30_000);
+            aTimer = new System.Timers.Timer(10_000);
             aTimer.Elapsed += OnTimedEvent;
             aTimer.AutoReset = true;
             aTimer.Enabled = true;
@@ -30,7 +30,7 @@ namespace NextMindBE
             {
                 _authenticatedUsers.Remove(inactiveUser.Key);
             }
-
+            NotifyEvents.Trigger(State.Idle);
             Console.WriteLine($"Current number of active users: {_authenticatedUsers.Count}");
         }
     }

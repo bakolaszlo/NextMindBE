@@ -19,63 +19,72 @@ namespace NextMindBE.Controllers
     [Authorize]
     public class PingsController : ControllerBase
     {
+        private readonly ILogger<PingsController> _logger;
         private readonly ApplicationDbContext _context;
         private const float LOCKOUT_TRESHOLD = 20f;
-        public PingsController(ApplicationDbContext context)
+        public PingsController(ApplicationDbContext context, ILogger<PingsController> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         [HttpPost]
         public async Task<ActionResult<bool>> PostPing(List<SensorData> payload)
         {
+            if(await CheckPayload(payload))
+            {
+                return Ok();
+            }
+            NotifyEvents.StartAlarm();
+            return BadRequest();
+        }
+
+        private async Task<bool> CheckPayload(List<SensorData> payload)
+        {
             var handler = new JwtSecurityTokenHandler();
             var token = handler.ReadToken(Request.Headers["Authorization"].ToString().Remove(0, 7)) as JwtSecurityToken;
             var claims = token?.Claims;
 
-            var sessionId = claims.FirstOrDefault(c => c.Type == "SessionId").Value;
+            var sessionId = claims?.FirstOrDefault(c => c.Type == "SessionId")?.Value;
+
+            if (sessionId == null)
+            {
+                _logger.LogWarning($"Session id was not found. {payload}");
+                return false;
+            }
 
             var sessionHistory = _context.SessionHistory.FirstOrDefault(o => o.SessionId == sessionId);
-            if(sessionHistory == null)
-            {
-                Console.WriteLine($"No session Id found. Expected: {sessionId}");
-                return BadRequest(); 
-                // TODO: Remove from the list, and lock out the app.
-            }
 
-            if(payload.Count == 0)
+            if (sessionHistory == null)
             {
-                return Ok();
-            }
-
-            var time1 = payload[0].RecordedTime;
-            if(!IsSensorDataStillValid(payload[0].SensorValues, sessionId))
-            {
-                return BadRequest();
-            }
-
-            for (int i = 1; i < payload.Count; i++)
-            {
-                var deltaTime = time1 - payload[i].RecordedTime;
-                if(Math.Abs(deltaTime.TotalSeconds) - sessionHistory.UpdateInterval > 0.09)
+                if(PingTimerManager._authenticatedUsers.TryGetValue(sessionId,out var _))
                 {
-                    Console.WriteLine("Received a delayed timestamp.");
-                    return BadRequest();
+                    PingTimerManager._authenticatedUsers.Remove(sessionId);
                 }
-
-                if (!IsSensorDataStillValid(payload[i].SensorValues, sessionId))
-                {
-                    return BadRequest();
-                }
-
-                time1 = payload[i].RecordedTime;
+                _logger.LogWarning($"No session history found. Expected session history with session id: {sessionId}");
+                return false;
             }
+
+            if (payload.Count == 0)
+            {
+                return true; // ?
+            }
+
+            if (!IsTimeDeltaValid(payload, sessionHistory,sessionId))
+            {
+                return false;
+            }
+            
+            if (!IsSensorDataStillValid(payload[0].SensorValues, sessionId))
+            {
+                return false;
+            }
+
 
             if (!PingTimerManager._authenticatedUsers.ContainsKey(sessionId))
             {
-                // TODO: Notify lockout server to lock out the app.
-                Console.WriteLine("Recived an inactive ping. Alarm ON!");
-                return BadRequest();
+                _logger.LogError("Received an inactive ping.");
+                return false;
             }
 
 
@@ -83,8 +92,31 @@ namespace NextMindBE.Controllers
 
             _context.SensorData.AddRange(payload);
             await _context.SaveChangesAsync();
+            return true;
+        }
 
-            return Ok();
+        private bool IsTimeDeltaValid(List<SensorData> payload, SessionHistory sessionHistory, string sessionId)
+        {
+            var time1 = payload[0].RecordedTime;
+
+            for (int i = 1; i < payload.Count; i++)
+            {
+                var deltaTime = time1 - payload[i].RecordedTime;
+                if (Math.Abs(deltaTime.TotalSeconds) - sessionHistory.UpdateInterval > 0.09)
+                {
+                    _logger.LogWarning("Received a delayed timestamp. Cancelling.");
+                    return false;
+                }
+
+                if (!IsSensorDataStillValid(payload[i].SensorValues, sessionId))
+                {
+                    return false;
+                }
+
+                time1 = payload[i].RecordedTime;
+            }
+
+            return true;
         }
 
         private bool IsSensorDataStillValid(float[] sensorValues, string sessionId)
@@ -92,7 +124,7 @@ namespace NextMindBE.Controllers
             var calibrationValues = _context.SensorOnCalibrationEnd.FirstOrDefault(o => o.SessionId == sessionId);
             if (calibrationValues == null)
             {
-                Console.WriteLine($"Could not find calibration values for session id: {sessionId}");
+                _logger.LogError($"Could not find calibration values for session id: {sessionId}");
                 return false;
             }
 
@@ -100,7 +132,7 @@ namespace NextMindBE.Controllers
             {
                 if (Math.Abs(sensorValues[i] - calibrationValues.SensorValues[i]) > LOCKOUT_TRESHOLD)
                 {
-                    Console.WriteLine($"Sensor data is invalid at pos:{i}. Got: {sensorValues[i]} Calibration Value: {calibrationValues.SensorValues[i]} Threshold: {LOCKOUT_TRESHOLD}");
+                    _logger.LogError($"Sensor data is invalid at pos:{i}. Got: {sensorValues[i]} Calibration Value: {calibrationValues.SensorValues[i]} Threshold: {LOCKOUT_TRESHOLD}");
                     return false;
                 }
             }

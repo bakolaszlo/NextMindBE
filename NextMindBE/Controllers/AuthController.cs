@@ -18,12 +18,15 @@ namespace NextMindBE.Controllers
     public class AuthController : ControllerBase
     {
         private IConfiguration _configuration { get; }
+
+        private ILogger<AuthController> _logger;
         public ApplicationDbContext _context { get; }
 
-        public AuthController(IConfiguration configuration, ApplicationDbContext context)
+        public AuthController(IConfiguration configuration, ApplicationDbContext context, ILogger<AuthController> logger)
         {
             _configuration = configuration;
             _context = context;
+            _logger = logger;
         }
 
         [HttpPost("register")]
@@ -54,11 +57,13 @@ namespace NextMindBE.Controllers
             var user = _context.User.SingleOrDefault(o => o.Username == request.Username);
             if(user == null)
             {
+                _logger.LogError($"Something went wrong with the login. Could not find username: {request.Username}.");
                 return BadRequest("Something went wrong");
             }
 
             if(!VerifyPasswordHash(request.Password, user.PasswordHash, user.PasswordSalt))
             {
+                _logger.LogError($"Wrong password for username: {request.Username}");
                 return BadRequest("Something went wrong.");
             }
 

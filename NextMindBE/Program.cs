@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using NextMindBE;
@@ -14,13 +15,14 @@ builder.Services.AddControllers().AddJsonOptions(options =>
 {
     //options.JsonSerializerOptions.Converters.Add(new ByteArrayConverter());
 });
-Console.WriteLine(builder.Configuration["ConnectionString"]);
+
 builder.Services.AddDbContext<ApplicationDbContext>(
     options =>
     {
-        options.UseMySQL(builder.Configuration["ConnectionString"]);
+        options.UseMySQL(StartupHelper.GetConnectionString(builder.Configuration)) ;
     });
 
+builder.Services.AddResponseCaching();
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
@@ -60,12 +62,22 @@ app.UseCors(
     options => options.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()
 );
 
+
+using (var scope = app.Services.CreateScope())
+{
+    Console.WriteLine("Applying migrations.");
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    db.Database.Migrate();
+    Console.WriteLine("Migrations applied.");
+}
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+// Sif (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseResponseCaching();
 
 app.UseHttpsRedirection();
 
