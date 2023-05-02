@@ -1,39 +1,33 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IdentityModel.Tokens.Jwt;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using NextMindBE.Data;
-using NextMindBE.DTOs;
 using NextMindBE.Model;
+using System.IdentityModel.Tokens.Jwt;
+using System.Text;
+
+// For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
 namespace NextMindBE.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
-    public class PingsController : ControllerBase
+    public class PhoneController : ControllerBase
     {
         private readonly ILogger<PingsController> _logger;
         private readonly ApplicationDbContext _context;
         private const float LOCKOUT_TRESHOLD = 30f;
-        public PingsController(ApplicationDbContext context, ILogger<PingsController> logger)
+        public PhoneController(ApplicationDbContext context, ILogger<PingsController> logger)
         {
             _context = context;
             _logger = logger;
         }
 
         [HttpPost]
-        public async Task<ActionResult<bool>> PostPing([FromBody] string payload)
+        public async Task<ActionResult<bool>> PostPing([FromBody] List<float> payload)
         {
-            if(await CheckPayload(payload))
+            if (await CheckPayload(payload))
             {
                 return Ok();
             }
@@ -41,12 +35,9 @@ namespace NextMindBE.Controllers
             return BadRequest();
         }
 
-        private async Task<bool> CheckPayload(string OTPMessage)
+        private async Task<bool> CheckPayload(List<float> payload)
         {
-            var decryptedMessage = DHController.Cipher(Convert.FromBase64String(OTPMessage));
-            List<SensorData> payload;
-            payload = JsonConvert.DeserializeObject<List<SensorData>>(Encoding.UTF8.GetString(decryptedMessage));
-
+            
             var handler = new JwtSecurityTokenHandler();
             var token = handler.ReadToken(Request.Headers["Authorization"].ToString().Remove(0, 7)) as JwtSecurityToken;
             var claims = token?.Claims;
@@ -63,7 +54,7 @@ namespace NextMindBE.Controllers
 
             if (sessionHistory == null)
             {
-                if(PingTimerManager._authenticatedUsers.TryGetValue(sessionId,out var _))
+                if (PingTimerManager._authenticatedUsers.TryGetValue(sessionId, out var _))
                 {
                     PingTimerManager._authenticatedUsers.Remove(sessionId);
                 }
@@ -76,15 +67,15 @@ namespace NextMindBE.Controllers
                 return true; // ?
             }
 
-            if (!IsTimeDeltaValid(payload, sessionHistory,sessionId))
-            {
-                return false;
-            }
-            
-            if (!IsSensorDataStillValid(payload[0].SensorValues, sessionId))
-            {
-                return false;
-            }
+            // if (!IsTimeDeltaValid(payload, sessionHistory, sessionId))
+            // {
+            //     return false;
+            // }
+            // 
+            // if (!IsSensorDataStillValid(payload[0].SensorValues, sessionId))
+            // {
+            //     return false;
+            // }
 
 
             if (!PingTimerManager._authenticatedUsers.ContainsKey(sessionId))
@@ -96,7 +87,7 @@ namespace NextMindBE.Controllers
 
             PingTimerManager._authenticatedUsers[sessionHistory.SessionId].LastActive = DateTime.UtcNow;
 
-            _context.SensorData.AddRange(payload);
+            // _context.SensorData.AddRange(payload);
             await _context.SaveChangesAsync();
             return true;
         }
@@ -134,7 +125,7 @@ namespace NextMindBE.Controllers
                 return false;
             }
 
-            for(int i = 0; i < sensorValues.Length; i++)
+            for (int i = 0; i < sensorValues.Length; i++)
             {
                 if (Math.Abs(sensorValues[i] - calibrationValues.SensorValues[i]) > LOCKOUT_TRESHOLD)
                 {

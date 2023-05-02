@@ -79,7 +79,7 @@ using (var scope = app.Services.CreateScope())
 
 app.UseResponseCaching();
 
-app.UseHttpsRedirection();
+// app.UseHttpsRedirection();
 
 app.UseAuthentication();
 

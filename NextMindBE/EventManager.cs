@@ -30,8 +30,8 @@ namespace NextMindBE
                 {
                     "Alarm", Enum.GetName(typeof(State), state)!
                 },
-                { "Latitude", LocationController.locationData.latitude.ToString() },
-                { "Longitude", LocationController.locationData.longitude.ToString() }
+                { "Latitude", LocationController.locationData.latitude.ToString("R") },
+                { "Longitude", LocationController.locationData.longitude.ToString("R") }
             };
             TriggerData.Data = data;
         }
