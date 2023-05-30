@@ -5,6 +5,11 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using NextMindBE;
 using NextMindBE.Data;
+using NextMindBE.Interfaces.Repostory;
+using NextMindBE.Interfaces.Service;
+using NextMindBE.Model;
+using NextMindBE.Repositories;
+using NextMindBE.Services;
 using Swashbuckle.AspNetCore.Filters;
 using System.Text;
 
@@ -38,6 +43,19 @@ builder.Services.AddSwaggerGen(options =>
 
     options.OperationFilter<SecurityRequirementsOperationFilter>();
 });
+
+// Repositories
+builder.Services.AddScoped<ISessionRepository, SessionRepository>();
+
+// Services
+builder.Services.AddScoped<ICipher, CipherService>();
+builder.Services.AddScoped<ISessionService, SessionService>();
+builder.Services.AddScoped<IValidatorService, ValidatorService>();
+builder.Services.AddScoped<IProcessingService, ProcessingService>();
+
+// Validators
+builder.Services.AddScoped<IValidator<SensorData>, SensorDataValidator>();
+builder.Services.AddScoped<IValidator<float>, PulseDataValidator>();
 
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -79,7 +97,7 @@ using (var scope = app.Services.CreateScope())
 
 app.UseResponseCaching();
 
-app.UseHttpsRedirection();
+// app.UseHttpsRedirection();
 
 app.UseAuthentication();
 

@@ -24,7 +24,7 @@ namespace NextMindBE.Controllers
                 //TriggerData.Data = null;
                 await Response.Body.WriteAsync(Encoding.UTF8.GetBytes(eventString));
                 await Response.Body.FlushAsync();
-                await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken); // wait for 5 seconds before sending the next event
+                await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken); // wait for 5 seconds before sending the next event
             }
 
             return new EmptyResult();
