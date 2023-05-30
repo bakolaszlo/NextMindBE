@@ -25,14 +25,13 @@ namespace NextMindBE.Services
 
         public bool ProcessPayload(HttpRequest request, byte[] payload, PayloadType payloadType)
         {
-            var decipheredPayloadByte = _cipherService.Cipher(payload, DHController.sharedKey);
-
             switch (payloadType)
             {
                 case PayloadType.Pulse:
                     
-                    return HandlePulseData(request, decipheredPayloadByte);
+                    return HandlePulseData(request, payload);
                 case PayloadType.Sensor:
+                    var decipheredPayloadByte = _cipherService.Cipher(payload, DHController.sharedKey);
                     return HandleSensorData(request, decipheredPayloadByte);
                 default:
                     break;
