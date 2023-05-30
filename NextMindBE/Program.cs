@@ -5,6 +5,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using NextMindBE;
 using NextMindBE.Data;
+using NextMindBE.Interfaces.Repository;
 using NextMindBE.Interfaces.Repostory;
 using NextMindBE.Interfaces.Service;
 using NextMindBE.Model;
@@ -46,6 +47,7 @@ builder.Services.AddSwaggerGen(options =>
 
 // Repositories
 builder.Services.AddScoped<ISessionRepository, SessionRepository>();
+builder.Services.AddScoped<ISensorOnCalibrationEndRepository, SensorOnCalibrationEndRepository>();
 
 // Services
 builder.Services.AddScoped<ICipher, CipherService>();
