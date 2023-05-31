@@ -17,10 +17,10 @@ namespace NextMindBE.Controllers
     [Authorize]
     public class PhoneController : ControllerBase
     {
-        private readonly ILogger<PingsController> _logger;
+        private readonly ILogger<PhoneController> _logger;
         private readonly IProcessingService _processingService;
 
-        public PhoneController(IProcessingService processingService, ILogger<PingsController> logger)
+        public PhoneController(IProcessingService processingService, ILogger<PhoneController> logger)
         {
             _processingService = processingService;
             _logger = logger;
